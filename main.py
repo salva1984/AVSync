@@ -1,16 +1,31 @@
-# This is a sample Python script.
+import os
+import time
 
-# Press Mayús+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from dotenv import load_dotenv
+
+load_dotenv()
+
+driver = webdriver.Chrome()
+# carga la pagina
+driver.get("https://auth.espol.edu.ec/login?service=https%3A%2F%2Faulavirtual.espol.edu.ec%2Flogin%2Fcas")
+
+# escribe el usuario
+usuario_box = driver.find_element(By.ID, "username")
+usuario_box.send_keys(os.getenv("USER"))
+
+# Escribe la contraseña
+password_box = driver.find_element(By.ID, "password")
+password_box.send_keys(os.getenv("PASS"))
+
+# Da click en inicar sesion
+iniciar_sesion = driver.find_element(By.NAME, "submit")
+iniciar_sesion.click()
+
+# Entra a un modulos de una página
+driver.get("https://aulavirtual.espol.edu.ec/courses/27829/modules")
 
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
 
-
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+time.sleep(2)
