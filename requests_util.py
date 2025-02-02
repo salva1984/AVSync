@@ -52,6 +52,10 @@ def descargar_archivo(url_descarga, carpeta_destino, cookies, archivos_no_descar
     nombre_archivo = ext + nombre_archivo
     ruta_destino = os.path.join(carpeta_destino, nombre_archivo)
 
+    if os.path.exists(ruta_destino):
+        print(f"El archivo {nombre_archivo} ya existe en {carpeta_destino}. Omitiendo descarga.")
+        return ruta_destino
+
     # Intentos de descarga
     for intento in range(intentos_max):
         try:

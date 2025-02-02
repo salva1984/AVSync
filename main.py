@@ -4,6 +4,7 @@ import os
 
 from dotenv import load_dotenv
 from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
@@ -100,7 +101,10 @@ def calcular_nivel(file):
 
 load_dotenv()
 desktop_path = get_desktop_path()
-driver = webdriver.Chrome()
+chrome_options = Options()
+chrome_options.add_argument("--headless")  # Activar el modo headless
+chrome_options.add_argument("--disable-gpu")
+driver = webdriver.Chrome(options=chrome_options)
 cookies = obtener_cookies_sesion(driver,
                                  "https://auth.espol.edu.ec/login?service=https%3A%2F%2Faulavirtual.espol.edu.ec%2Flogin%2Fcas",
                                  os.getenv("USER"),
@@ -188,14 +192,15 @@ for ldiv in l_divs:
                 ruta_actual = raiz + "\\" + nombre_archivo
                 stack.append(ruta_actual)
                 if enlace:
-                    if len(links) > 1:
-                        crear_dir(ruta_actual)
-                        for link in links:
-                            # descargar_archivo_con_selenium(link, ruta_actual,driver)
-                            descargar_archivo(link, ruta_actual, cookies, archivos_no_descargados)
-                    else:
-                        # descargar_archivo_con_selenium(links.pop(), raiz,driver)
-                        descargar_archivo(links.pop(), raiz, cookies, archivos_no_descargados)
+                    if links:  # idk
+                        if len(links) > 1:
+                            crear_dir(ruta_actual)
+                            for link in links:
+                                # descargar_archivo_con_selenium(link, ruta_actual,driver)
+                                descargar_archivo(link, ruta_actual, cookies, archivos_no_descargados)
+                        else:
+                            # descargar_archivo_con_selenium(links.pop(), raiz,driver)
+                            descargar_archivo(links.pop(), raiz, cookies, archivos_no_descargados)
             else:
                 ruta_actual = stack[-1] + "\\" + nombre_archivo
                 stack.append(ruta_actual)
@@ -237,3 +242,10 @@ for ldiv in l_divs:
                     crear_dir(ruta_actual)
                 else:
                     print(f"El siguiente archivo: {siguiente_archivo['nombre']} es un separador.")
+
+if len(archivos_no_descargados) > 0:
+    print("\n" + "=" * 50)
+    print("!!! ADVERTENCIA: HAY ARCHIVOS NO DESCARGADOS !!!")
+    for i in archivos_no_descargados:
+        print(i)
+    print("=" * 50 + "\n")
