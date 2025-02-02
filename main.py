@@ -1,21 +1,17 @@
-import os
-import time
-import winreg
-from os.path import basename
-
-import requests
 import re
+import winreg
+import os
 
-from selenium import webdriver
-from selenium.webdriver.common.by import By
 from dotenv import load_dotenv
-from selenium.webdriver.support.wait import WebDriverWait
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
-from urllib.request import urlopen
+from selenium.webdriver.support.ui import WebDriverWait
 
-def get_filename(url):
-    response = urlopen(url)
-    return basename(response.url)
+from requests_util import descargar_archivo
+
+
 def get_desktop_path():
     with winreg.OpenKey(winreg.HKEY_CURRENT_USER,
                         r"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders") as key:
@@ -24,7 +20,6 @@ def get_desktop_path():
 
 
 desktop_path = get_desktop_path()
-print(desktop_path)
 
 
 def pop_n(stack, n):
@@ -47,24 +42,55 @@ def limpiar_nombre_archivo(nombre, reemplazo="-"):
     return re.sub(caracteres_invalidos, reemplazo, nombre)
 
 
-def descargar_archivo(url, carpeta_destino):
-    crear_dir(carpeta_destino)
-    nombre_archivo = get_filename(url)  # Extrae el nombre del archivo desde la URL
-    ruta_destino = os.path.join(carpeta_destino, nombre_archivo)
+# def descargar_archivo_con_selenium(url, carpeta_destino, driver):
+#     crear_dir(carpeta_destino)
+#
+#     nombre_archivo = get_filename(url)
+#     ruta_destino = os.path.join(carpeta_destino, nombre_archivo)
+#
+#     #  Extraer cookies de Selenium
+#     cookies_selenium = {cookie["name"]: cookie["value"] for cookie in driver.get_cookies()}
+#
+#     #  Extraer headers (modifica si es necesario)
+#     headers = {
+#         "User-Agent": driver.execute_script("return navigator.userAgent;"),  # Simula el navegador
+#         "Referer": driver.current_url,  # Indica de qué página vienes
+#     }
+#
+#     try:
+#         respuesta = requests.get(url, headers=headers, cookies=cookies_selenium, stream=True)
+#         respuesta.raise_for_status()
+#
+#         with open(ruta_destino, "wb") as archivo:
+#             for chunk in respuesta.iter_content(chunk_size=8192):
+#                 archivo.write(chunk)
+#
+#         print(f"Archivo descargado en: {ruta_destino}")
+#         return ruta_destino
+#     except requests.exceptions.RequestException as e:
+#         print(f"Error al descargar el archivo: {e}")
+#         return None
 
-    try:
-        respuesta = requests.get(url, stream=True)
-        respuesta.raise_for_status()  # Lanza una excepción si hay un error en la descarga
+# Configurar Selenium para iniciar sesión y extraer cookies
+def obtener_cookies_sesion(url_login, usuario, contraseña):
+    load_dotenv()
+    options = Options()
+    driver = webdriver.Chrome(options=options)
 
-        with open(ruta_destino, "wb") as archivo:
-            for chunk in respuesta.iter_content(chunk_size=8192):  # Descarga en partes
-                archivo.write(chunk)
+    driver.get(url_login)
 
-        print(f"Archivo descargado en: {ruta_destino}")
-        return ruta_destino
-    except requests.exceptions.RequestException as e:
-        print(f"Error al descargar el archivo: {e}")
-        return None
+    # Iniciar sesión (ajusta los selectores según sea necesario)
+    driver.find_element(By.ID, "username").send_keys(usuario)
+    driver.find_element(By.ID, "password").send_keys(contraseña)
+    driver.find_element(By.NAME, "submit").click()
+
+    # Extraer cookies
+    cookies = driver.get_cookies()
+    driver.quit()
+    return cookies
+
+
+
 
 
 def crear_dir(path):
@@ -103,11 +129,18 @@ def calcular_nivel(file):
 
 load_dotenv()
 
+load_dotenv()
+# Obtén las cookies después de iniciar sesión
+cookies = obtener_cookies_sesion(
+    "https://auth.espol.edu.ec/login?service=https%3A%2F%2Faulavirtual.espol.edu.ec%2Flogin%2Fcas", os.getenv("USER"),
+    os.getenv("PASS"))
+
 driver = webdriver.Chrome()
 # carga la pagina
 driver.get("https://auth.espol.edu.ec/login?service=https%3A%2F%2Faulavirtual.espol.edu.ec%2Flogin%2Fcas")
 
 # escribe el usuario
+
 usuario_box = driver.find_element(By.ID, "username")
 usuario_box.send_keys(os.getenv("USER"))
 
@@ -186,9 +219,11 @@ for div in divs:
                 if len(links) > 1:
                     crear_dir(ruta_actual)
                     for link in links:
-                        descargar_archivo(link, ruta_actual)
+                        # descargar_archivo_con_selenium(link, ruta_actual,driver)
+                        descargar_archivo(link, ruta_actual, cookies)
                 else:
-                    descargar_archivo(links.pop(), raiz)
+                    # descargar_archivo_con_selenium(links.pop(), raiz,driver)
+                    descargar_archivo(links.pop(), raiz, cookies)
             else:
                 ruta_actual = stack[-1] + "\\" + nombre_archivo
                 stack.append(ruta_actual)
@@ -196,10 +231,12 @@ for div in divs:
                     if len(links) > 1:
                         crear_dir(ruta_actual)
                         for link in links:
-                            descargar_archivo(link, ruta_actual)
+                            # descargar_archivo_con_selenium(link, ruta_actual,driver)
+                            descargar_archivo(link, ruta_actual, cookies)
                     else:
-                        descargar_archivo(links.pop(), stack[-2])
-
+                        if len(links) > 0:
+                            # descargar_archivo_con_selenium(links.pop(), stack[-2],driver)
+                            descargar_archivo(links.pop(), raiz, cookies)
             if siguiente_archivo:
                 if siguiente_archivo["nivel"] > nivel:
                     crear_dir(ruta_actual)
@@ -217,7 +254,7 @@ for div in divs:
             print(f"{nombre_archivo} es un separador.")
 
             if siguiente_archivo:
-                if siguiente_archivo["link"] :
+                if siguiente_archivo["link"]:
                     if len(stack) == 0:
                         ruta_actual = raiz + "\\" + nombre_archivo
                         stack.append(ruta_actual)
@@ -227,9 +264,6 @@ for div in divs:
                     crear_dir(ruta_actual)
                 else:
                     print(f"{siguiente_archivo['nombre']} es un divisor.")
-
-
-
 
 # links = marco.find_elements(By.TAG_NAME, "a")
 #
