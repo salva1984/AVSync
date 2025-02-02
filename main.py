@@ -4,7 +4,6 @@ import os
 
 from dotenv import load_dotenv
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
@@ -17,9 +16,6 @@ def get_desktop_path():
                         r"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders") as key:
         desktop = winreg.QueryValueEx(key, "Desktop")[0]
     return desktop
-
-
-desktop_path = get_desktop_path()
 
 
 def pop_n(stack, n):
@@ -103,9 +99,7 @@ def calcular_nivel(file):
 
 
 load_dotenv()
-# Obtén las cookies después de iniciar sesión
-
-
+desktop_path = get_desktop_path()
 driver = webdriver.Chrome()
 cookies = obtener_cookies_sesion(driver,
                                  "https://auth.espol.edu.ec/login?service=https%3A%2F%2Faulavirtual.espol.edu.ec%2Flogin%2Fcas",
@@ -121,23 +115,21 @@ driver.get("https://aulavirtual.espol.edu.ec/courses/28459/modules")
 marco = driver.find_element(By.ID, "context_modules")
 divs = marco.find_elements(By.XPATH, "./div")
 
-for div in divs:
-    raiz = div.get_attribute("aria-label")
-    raiz = limpiar_nombre_archivo(raiz)
-    print(f'Raiz: {raiz}')
-    raiz = desktop_path + "\\" + limpiar_nombre_archivo(driver.title) + "\\" + raiz
-    print(f'Raiz: {raiz}')
-    crear_dir(raiz)
+# No se puede iterar sobre divs directamente...
+l_divs = []
 
+for div in divs:
+    # Obtenemos la ruta raiz
+    raiz = desktop_path + "\\" + limpiar_nombre_archivo(driver.title) + "\\" + limpiar_nombre_archivo(
+        div.get_attribute("aria-label"))
+
+    # Get all the "content" of the div
     contenido = WebDriverWait(div, 10).until(
         EC.presence_of_element_located((By.CSS_SELECTOR, ".ig-list.items.context_module_items"))
     )
-
-    stack = []
-
     archivos = contenido.find_elements(By.XPATH, "./li")
 
-    # No se puede iterar sobre archivos directamente, al cambiar de página todos los webElements se convierten en Stale.
+    # Get relevant information about files
     l_archivos = []
     for archivo in archivos:
         nombre_archivo = limpiar_nombre_archivo(archivo.text.split("\n")[1])
@@ -152,7 +144,23 @@ for div in divs:
             "link": link,
         })
 
-    for index, archivo in enumerate(l_archivos):
+    # Add a dict with the root and all the files (not all the files have a link)
+    l_divs.append({
+        'raiz': raiz,
+        'archivos': l_archivos,
+
+    })
+
+archivos_no_descargados = []
+
+for ldiv in l_divs:
+    raiz = ldiv['raiz']
+    archivos = ldiv['archivos']
+    print(f'Procesando div: {raiz}')
+    crear_dir(raiz)
+
+    stack = []
+    for index, archivo in enumerate(archivos):
         driver.implicitly_wait(1)  # Espera implícita de 5 segundos
 
         nombre_archivo = archivo["nombre"]
@@ -163,7 +171,7 @@ for div in divs:
         print(f"Nivel: {nivel}")
 
         try:
-            siguiente_archivo = l_archivos[index + 1]
+            siguiente_archivo = archivos[index + 1]
         except:
             siguiente_archivo = None
         # Enlaces con contenido
@@ -179,14 +187,15 @@ for div in divs:
             if len(stack) == 0:
                 ruta_actual = raiz + "\\" + nombre_archivo
                 stack.append(ruta_actual)
-                if len(links) > 1:
-                    crear_dir(ruta_actual)
-                    for link in links:
-                        # descargar_archivo_con_selenium(link, ruta_actual,driver)
-                        descargar_archivo(link, ruta_actual, cookies)
-                else:
-                    # descargar_archivo_con_selenium(links.pop(), raiz,driver)
-                    descargar_archivo(links.pop(), raiz, cookies)
+                if enlace:
+                    if len(links) > 1:
+                        crear_dir(ruta_actual)
+                        for link in links:
+                            # descargar_archivo_con_selenium(link, ruta_actual,driver)
+                            descargar_archivo(link, ruta_actual, cookies, archivos_no_descargados)
+                    else:
+                        # descargar_archivo_con_selenium(links.pop(), raiz,driver)
+                        descargar_archivo(links.pop(), raiz, cookies, archivos_no_descargados)
             else:
                 ruta_actual = stack[-1] + "\\" + nombre_archivo
                 stack.append(ruta_actual)
@@ -195,11 +204,11 @@ for div in divs:
                         crear_dir(ruta_actual)
                         for link in links:
                             # descargar_archivo_con_selenium(link, ruta_actual,driver)
-                            descargar_archivo(link, ruta_actual, cookies)
+                            descargar_archivo(link, ruta_actual, cookies, archivos_no_descargados)
                     else:
                         if len(links) > 0:
                             # descargar_archivo_con_selenium(links.pop(), stack[-2],driver)
-                            descargar_archivo(links.pop(), stack[-2], cookies)
+                            descargar_archivo(links.pop(), stack[-2], cookies, archivos_no_descargados)
             if siguiente_archivo:
                 if siguiente_archivo["nivel"] > nivel:
                     crear_dir(ruta_actual)
@@ -218,6 +227,7 @@ for div in divs:
 
             if siguiente_archivo:
                 if siguiente_archivo["link"]:
+                    print(f"El siguiente archivo: {siguiente_archivo['nombre']} contiene links.")
                     if len(stack) == 0:
                         ruta_actual = raiz + "\\" + nombre_archivo
                         stack.append(ruta_actual)
@@ -226,4 +236,4 @@ for div in divs:
                         stack.append(ruta_actual)
                     crear_dir(ruta_actual)
                 else:
-                    print(f"{siguiente_archivo['nombre']} es un divisor.")
+                    print(f"El siguiente archivo: {siguiente_archivo['nombre']} es un separador.")

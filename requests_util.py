@@ -1,5 +1,5 @@
 import os
-
+import time
 import requests
 
 
@@ -28,7 +28,7 @@ def obtener_nombre_archivo(url, cookies=None):
     # Si no hay Content-Disposition, intenta con la URL
     return url.split("/")[-1]  # Última parte de la URL como nombre alternativo
 
-def descargar_archivo(url_descarga, carpeta_destino, cookies):
+def descargar_archivo(url_descarga, carpeta_destino, cookies, archivos_no_descargados, intentos_max=3):
     from main import limpiar_nombre_archivo
     session = requests.Session()
 
@@ -36,25 +36,44 @@ def descargar_archivo(url_descarga, carpeta_destino, cookies):
     for cookie in cookies:
         session.cookies.set(cookie['name'], cookie['value'])
 
-    # Extraer el nombre del archivo desde la URL
-    nombre_archivo = obtener_nombre_archivo(url_descarga, cookies)
-    nombre_archivo = limpiar_nombre_archivo(nombre_archivo)
+    # Intentar obtener el nombre del archivo
+    try:
+        nombre_archivo = obtener_nombre_archivo(url_descarga, cookies)
+        if not nombre_archivo:
+            raise ValueError("No se pudo obtener el nombre del archivo.")
+    except Exception as e:
+        print(f"Error al obtener el nombre del archivo: {e}")
+        archivos_no_descargados.append(url_descarga)
+        return None
 
-    # Añadir extension al incio
-    ext = '(' + nombre_archivo.split('.')[-1].upper() + ')' + " "
-    nombre_archivo = ext+nombre_archivo
+    # Limpiar y formatear el nombre del archivo
+    nombre_archivo = limpiar_nombre_archivo(nombre_archivo)
+    ext = f"({nombre_archivo.split('.')[-1].upper()}) "
+    nombre_archivo = ext + nombre_archivo
     ruta_destino = os.path.join(carpeta_destino, nombre_archivo)
 
-    try:
-        respuesta = session.get(url_descarga, stream=True)
-        respuesta.raise_for_status()
+    # Intentos de descarga
+    for intento in range(intentos_max):
+        try:
+            respuesta = session.get(url_descarga, stream=True, timeout=10)
+            respuesta.raise_for_status()
 
-        with open(ruta_destino, "wb") as archivo:
-            for chunk in respuesta.iter_content(chunk_size=8192):
-                archivo.write(chunk)
+            # Guardar el archivo en la ruta de destino
+            with open(ruta_destino, "wb") as archivo:
+                for chunk in respuesta.iter_content(chunk_size=8192):
+                    archivo.write(chunk)
 
-        print(f"Archivo descargado en: {ruta_destino}")
-        return ruta_destino
-    except requests.exceptions.RequestException as e:
-        print(f"Error al descargar el archivo: {e}")
-        return None
+            print(f"Archivo descargado en: {ruta_destino}")
+            return ruta_destino
+
+        except requests.exceptions.ConnectTimeout:
+            print(f"Intento {intento + 1}/{intentos_max}: Tiempo de espera agotado para {url_descarga}.")
+        except requests.exceptions.RequestException as e:
+            print(f"Intento {intento + 1}/{intentos_max}: Error al descargar {url_descarga}: {e}")
+
+        # Esperar antes de reintentar
+        time.sleep(5 * (intento + 1))
+
+    print(f"No se pudo descargar el archivo después de {intentos_max} intentos: {url_descarga}")
+    archivos_no_descargados.append(url_descarga)
+    return None
