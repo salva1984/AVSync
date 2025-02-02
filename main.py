@@ -90,13 +90,23 @@ def obtener_cookies_sesion(url_login, usuario, contraseña):
     return cookies
 
 
-
-
-
 def crear_dir(path):
     if not os.path.exists(path):
         os.makedirs(path)
         print("Creando dir a:" + path)
+
+def crear_dir_force(path: str):
+    if not os.path.exists(path):
+        os.makedirs(path)
+        print("Creando dir a:" + path)
+    else:
+        print(f'Conflicto de carpeta-archivo con el mismo nombre en {path}')
+        path = path.split('\\')
+        path[-1] = 'Carpeta-'+path[-1]
+        path = "\\".join(path)
+        os.makedirs(path)
+
+
 
 
 def extraer_links(links):
@@ -125,9 +135,6 @@ def calcular_nivel(file):
             break
     nivel = nivel.split("_")[1][0]
     return nivel
-
-
-load_dotenv()
 
 load_dotenv()
 # Obtén las cookies después de iniciar sesión
@@ -162,8 +169,9 @@ divs = marco.find_elements(By.XPATH, "./div")
 for div in divs:
     raiz = div.get_attribute("aria-label")
     raiz = limpiar_nombre_archivo(raiz)
-    print(raiz)
+    print(f'Raiz: {raiz}')
     raiz = desktop_path + "\\" + limpiar_nombre_archivo(driver.title) + "\\" + raiz
+    print(f'Raiz: {raiz}')
     crear_dir(raiz)
 
     contenido = WebDriverWait(div, 10).until(
@@ -236,10 +244,12 @@ for div in divs:
                     else:
                         if len(links) > 0:
                             # descargar_archivo_con_selenium(links.pop(), stack[-2],driver)
-                            descargar_archivo(links.pop(), raiz, cookies)
+                            descargar_archivo(links.pop(), stack[-2], cookies)
             if siguiente_archivo:
                 if siguiente_archivo["nivel"] > nivel:
-                    crear_dir(ruta_actual)
+                    crear_dir_force(ruta_actual)
+                    stack.pop()
+                    stack.append(ruta_actual)
 
                 # Verificar si estan en el mismo lugar:
                 if siguiente_archivo["nivel"] == nivel:

@@ -2,7 +2,7 @@ import os
 
 import requests
 
-from main import limpiar_nombre_archivo
+
 
 
 def obtener_nombre_archivo(url, cookies=None):
@@ -29,6 +29,7 @@ def obtener_nombre_archivo(url, cookies=None):
     return url.split("/")[-1]  # Última parte de la URL como nombre alternativo
 
 def descargar_archivo(url_descarga, carpeta_destino, cookies):
+    from main import limpiar_nombre_archivo
     session = requests.Session()
 
     # Agregar cookies a la sesión de requests
