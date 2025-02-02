@@ -247,9 +247,7 @@ for div in divs:
                             descargar_archivo(links.pop(), stack[-2], cookies)
             if siguiente_archivo:
                 if siguiente_archivo["nivel"] > nivel:
-                    crear_dir_force(ruta_actual)
-                    stack.pop()
-                    stack.append(ruta_actual)
+                    crear_dir(ruta_actual)
 
                 # Verificar si estan en el mismo lugar:
                 if siguiente_archivo["nivel"] == nivel:

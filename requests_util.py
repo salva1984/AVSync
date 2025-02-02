@@ -39,6 +39,10 @@ def descargar_archivo(url_descarga, carpeta_destino, cookies):
     # Extraer el nombre del archivo desde la URL
     nombre_archivo = obtener_nombre_archivo(url_descarga, cookies)
     nombre_archivo = limpiar_nombre_archivo(nombre_archivo)
+
+    # Añadir extension al incio
+    ext = '(' + nombre_archivo.split('.')[-1].upper() + ')' + " "
+    nombre_archivo = ext+nombre_archivo
     ruta_destino = os.path.join(carpeta_destino, nombre_archivo)
 
     try:
