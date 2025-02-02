@@ -42,41 +42,8 @@ def limpiar_nombre_archivo(nombre, reemplazo="-"):
     return re.sub(caracteres_invalidos, reemplazo, nombre)
 
 
-# def descargar_archivo_con_selenium(url, carpeta_destino, driver):
-#     crear_dir(carpeta_destino)
-#
-#     nombre_archivo = get_filename(url)
-#     ruta_destino = os.path.join(carpeta_destino, nombre_archivo)
-#
-#     #  Extraer cookies de Selenium
-#     cookies_selenium = {cookie["name"]: cookie["value"] for cookie in driver.get_cookies()}
-#
-#     #  Extraer headers (modifica si es necesario)
-#     headers = {
-#         "User-Agent": driver.execute_script("return navigator.userAgent;"),  # Simula el navegador
-#         "Referer": driver.current_url,  # Indica de qué página vienes
-#     }
-#
-#     try:
-#         respuesta = requests.get(url, headers=headers, cookies=cookies_selenium, stream=True)
-#         respuesta.raise_for_status()
-#
-#         with open(ruta_destino, "wb") as archivo:
-#             for chunk in respuesta.iter_content(chunk_size=8192):
-#                 archivo.write(chunk)
-#
-#         print(f"Archivo descargado en: {ruta_destino}")
-#         return ruta_destino
-#     except requests.exceptions.RequestException as e:
-#         print(f"Error al descargar el archivo: {e}")
-#         return None
-
 # Configurar Selenium para iniciar sesión y extraer cookies
-def obtener_cookies_sesion(url_login, usuario, contraseña):
-    load_dotenv()
-    options = Options()
-    driver = webdriver.Chrome(options=options)
-
+def obtener_cookies_sesion(driver, url_login, usuario, contraseña):
     driver.get(url_login)
 
     # Iniciar sesión (ajusta los selectores según sea necesario)
@@ -86,7 +53,6 @@ def obtener_cookies_sesion(url_login, usuario, contraseña):
 
     # Extraer cookies
     cookies = driver.get_cookies()
-    driver.quit()
     return cookies
 
 
@@ -95,6 +61,7 @@ def crear_dir(path):
         os.makedirs(path)
         print("Creando dir a:" + path)
 
+
 def crear_dir_force(path: str):
     if not os.path.exists(path):
         os.makedirs(path)
@@ -102,11 +69,9 @@ def crear_dir_force(path: str):
     else:
         print(f'Conflicto de carpeta-archivo con el mismo nombre en {path}')
         path = path.split('\\')
-        path[-1] = 'Carpeta-'+path[-1]
+        path[-1] = 'Carpeta-' + path[-1]
         path = "\\".join(path)
         os.makedirs(path)
-
-
 
 
 def extraer_links(links):
@@ -136,28 +101,18 @@ def calcular_nivel(file):
     nivel = nivel.split("_")[1][0]
     return nivel
 
+
 load_dotenv()
 # Obtén las cookies después de iniciar sesión
-cookies = obtener_cookies_sesion(
-    "https://auth.espol.edu.ec/login?service=https%3A%2F%2Faulavirtual.espol.edu.ec%2Flogin%2Fcas", os.getenv("USER"),
-    os.getenv("PASS"))
+
 
 driver = webdriver.Chrome()
-# carga la pagina
+cookies = obtener_cookies_sesion(driver,
+                                 "https://auth.espol.edu.ec/login?service=https%3A%2F%2Faulavirtual.espol.edu.ec%2Flogin%2Fcas",
+                                 os.getenv("USER"),
+                                 os.getenv("PASS"))
+
 driver.get("https://auth.espol.edu.ec/login?service=https%3A%2F%2Faulavirtual.espol.edu.ec%2Flogin%2Fcas")
-
-# escribe el usuario
-
-usuario_box = driver.find_element(By.ID, "username")
-usuario_box.send_keys(os.getenv("USER"))
-
-# Escribe la contraseña
-password_box = driver.find_element(By.ID, "password")
-password_box.send_keys(os.getenv("PASS"))
-
-# Da click en inicar sesion
-iniciar_sesion = driver.find_element(By.NAME, "submit")
-iniciar_sesion.click()
 
 # Entra a un modulos de una página
 driver.get("https://aulavirtual.espol.edu.ec/courses/28459/modules")
@@ -272,25 +227,3 @@ for div in divs:
                     crear_dir(ruta_actual)
                 else:
                     print(f"{siguiente_archivo['nombre']} es un divisor.")
-
-# links = marco.find_elements(By.TAG_NAME, "a")
-#
-# # poner las urls
-# urls = extraer_links(links)
-#
-# # visitar las urls y agregar a sub_urls
-# sub_urls = []
-# for url in urls:
-#     print(f"Visitando url: {url}")  # Mostrar la URL que se va a visitar
-#     driver.get(url)
-#     marco = driver.find_element(By.ID, "content")
-#     links = marco.find_elements(By.TAG_NAME, "a")
-#
-#     for l in links:
-#         url = l.get_attribute("href")
-#         if url is not None and url not in urls and "download" in url:  # Verificar si la URL ya está en la lista
-#             sub_urls.append(url)  # Agregar solo si no está
-#
-#     print(sub_urls)
-#
-# time.sleep(2)
