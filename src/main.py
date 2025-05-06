@@ -1,14 +1,15 @@
 import re
+import time
 import winreg
 import os
 
-from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
+from file_utils import leer_archivo
 from requests_util import descargar_archivo
 
 
@@ -25,27 +26,17 @@ def pop_n(stack, n):
 
 
 def limpiar_nombre_archivo(nombre, reemplazo="-"):
-    """
-    Reemplaza caracteres no válidos en nombres de archivos o carpetas en Windows.
-
-    Argumentos:
-    - nombre (str): Nombre original del archivo o carpeta.
-    - reemplazo (str): Carácter con el que se reemplazarán los caracteres no permitidos (por defecto '_').
-
-    Retorna:
-    - str: Nombre limpio sin caracteres inválidos.
-    """
     caracteres_invalidos = r'[<>:"/|?*]'  # Caracteres no permitidos en Windows
     return re.sub(caracteres_invalidos, reemplazo, nombre)
 
 
 # Configurar Selenium para iniciar sesión y extraer cookies
-def obtener_cookies_sesion(driver, url_login, usuario, contraseña):
+def obtener_cookies_sesion(driver, url_login, usuario, password):
     driver.get(url_login)
 
     # Iniciar sesión (ajusta los selectores según sea necesario)
     driver.find_element(By.ID, "username").send_keys(usuario)
-    driver.find_element(By.ID, "password").send_keys(contraseña)
+    driver.find_element(By.ID, "password").send_keys(password)
     driver.find_element(By.NAME, "submit").click()
 
     # Extraer cookies
@@ -99,21 +90,32 @@ def calcular_nivel(file):
     return nivel
 
 
-load_dotenv()
+datos = leer_archivo()
+correo = datos[0]
+password = datos[1]
 desktop_path = get_desktop_path()
 chrome_options = Options()
-chrome_options.add_argument("--headless")  # Activar el modo headless
-chrome_options.add_argument("--disable-gpu")
+chrome_options.add_experimental_option('detach', True)
+# chrome_options.add_argument("--headless")  # Activar el modo headless
+# chrome_options.add_argument("--disable-gpu")
 driver = webdriver.Chrome(options=chrome_options)
 cookies = obtener_cookies_sesion(driver,
                                  "https://auth.espol.edu.ec/login?service=https%3A%2F%2Faulavirtual.espol.edu.ec%2Flogin%2Fcas",
-                                 os.getenv("USER"),
-                                 os.getenv("PASS"))
+                                 correo,
+                                 password)
 
 driver.get("https://auth.espol.edu.ec/login?service=https%3A%2F%2Faulavirtual.espol.edu.ec%2Flogin%2Fcas")
 
 # Entra a un modulos de una página
-driver.get("https://aulavirtual.espol.edu.ec/courses/28459/modules")
+driver.get("https://aulavirtual.espol.edu.ec/courses/24536/modules")
+
+boton_expandir = driver.find_element(By.ID, 'expand_collapse_all')
+if boton_expandir.get_attribute('aria-expanded') == 'true':
+    boton_expandir.click()
+    time.sleep(0.5)
+    boton_expandir.click()
+else:
+    boton_expandir.click()
 
 # Obtener todos los links de modulos
 marco = driver.find_element(By.ID, "context_modules")
