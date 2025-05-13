@@ -93,6 +93,7 @@ def calcular_nivel(file):
 datos = leer_archivo()
 correo = datos[0]
 password = datos[1]
+cursos = datos[2].split(",")
 desktop_path = get_desktop_path()
 chrome_options = Options()
 chrome_options.add_experimental_option('detach', True)
@@ -104,150 +105,148 @@ cookies = obtener_cookies_sesion(driver,
                                  correo,
                                  password)
 
-driver.get("https://auth.espol.edu.ec/login?service=https%3A%2F%2Faulavirtual.espol.edu.ec%2Flogin%2Fcas")
 
-# Entra a un modulos de una página
-driver.get("https://aulavirtual.espol.edu.ec/courses/24536/modules")
+def main_function(curso):
+    driver.get(curso)
+    boton_expandir = driver.find_element(By.ID, 'expand_collapse_all')
+    if boton_expandir.get_attribute('aria-expanded') == 'true':
+        boton_expandir.click()
+        time.sleep(0.5)
+        boton_expandir.click()
+    else:
+        boton_expandir.click()
+    # Obtener todos los links de modulos
+    marco = driver.find_element(By.ID, "context_modules")
+    divs = marco.find_elements(By.XPATH, "./div")
+    # No se puede iterar sobre divs directamente...
+    l_divs = []
+    for div in divs:
+        # Obtenemos la ruta raiz
+        raiz = desktop_path + "\\" + limpiar_nombre_archivo(driver.title) + "\\" + limpiar_nombre_archivo(
+            div.get_attribute("aria-label"))
 
-boton_expandir = driver.find_element(By.ID, 'expand_collapse_all')
-if boton_expandir.get_attribute('aria-expanded') == 'true':
-    boton_expandir.click()
-    time.sleep(0.5)
-    boton_expandir.click()
-else:
-    boton_expandir.click()
+        # Get all the "content" of the div
+        contenido = WebDriverWait(div, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, ".ig-list.items.context_module_items"))
+        )
+        archivos = contenido.find_elements(By.XPATH, "./li")
 
-# Obtener todos los links de modulos
-marco = driver.find_element(By.ID, "context_modules")
-divs = marco.find_elements(By.XPATH, "./div")
+        # Get relevant information about files
+        l_archivos = []
+        for archivo in archivos:
+            nombre_archivo = limpiar_nombre_archivo(archivo.text.split("\n")[1])
+            nivel = calcular_nivel(archivo)
+            try:
+                link = archivo.find_element(By.TAG_NAME, "a").get_attribute("href")
+            except:
+                link = None
+            l_archivos.append({
+                "nombre": nombre_archivo,
+                "nivel": nivel,
+                "link": link,
+            })
 
-# No se puede iterar sobre divs directamente...
-l_divs = []
+        # Add a dict with the root and all the files (not all the files have a link)
+        l_divs.append({
+            'raiz': raiz,
+            'archivos': l_archivos,
 
-for div in divs:
-    # Obtenemos la ruta raiz
-    raiz = desktop_path + "\\" + limpiar_nombre_archivo(driver.title) + "\\" + limpiar_nombre_archivo(
-        div.get_attribute("aria-label"))
-
-    # Get all the "content" of the div
-    contenido = WebDriverWait(div, 10).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, ".ig-list.items.context_module_items"))
-    )
-    archivos = contenido.find_elements(By.XPATH, "./li")
-
-    # Get relevant information about files
-    l_archivos = []
-    for archivo in archivos:
-        nombre_archivo = limpiar_nombre_archivo(archivo.text.split("\n")[1])
-        nivel = calcular_nivel(archivo)
-        try:
-            link = archivo.find_element(By.TAG_NAME, "a").get_attribute("href")
-        except:
-            link = None
-        l_archivos.append({
-            "nombre": nombre_archivo,
-            "nivel": nivel,
-            "link": link,
         })
+    archivos_no_descargados = []
+    for ldiv in l_divs:
+        raiz = ldiv['raiz']
+        archivos = ldiv['archivos']
+        print(f'Procesando div: {raiz}')
+        crear_dir(raiz)
 
-    # Add a dict with the root and all the files (not all the files have a link)
-    l_divs.append({
-        'raiz': raiz,
-        'archivos': l_archivos,
+        stack = []
+        for index, archivo in enumerate(archivos):
+            driver.implicitly_wait(1)  # Espera implícita de 5 segundos
 
-    })
+            nombre_archivo = archivo["nombre"]
+            nivel = archivo["nivel"]
+            enlace = archivo["link"]
 
-archivos_no_descargados = []
+            print(f"Nom archivo:{nombre_archivo}")
+            print(f"Nivel: {nivel}")
 
-for ldiv in l_divs:
-    raiz = ldiv['raiz']
-    archivos = ldiv['archivos']
-    print(f'Procesando div: {raiz}')
-    crear_dir(raiz)
+            try:
+                siguiente_archivo = archivos[index + 1]
+            except:
+                siguiente_archivo = None
 
-    stack = []
-    for index, archivo in enumerate(archivos):
-        driver.implicitly_wait(1)  # Espera implícita de 5 segundos
+            # Enlaces con contenido
+            if enlace:
+                driver.get(enlace)
+                marco = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.ID, "content"))
+                )
+                links = marco.find_elements(By.TAG_NAME, "a")
+                links = extraer_links_descarga(links)
 
-        nombre_archivo = archivo["nombre"]
-        nivel = archivo["nivel"]
-        enlace = archivo["link"]
-
-        print(f"Nom archivo:{nombre_archivo}")
-        print(f"Nivel: {nivel}")
-
-        try:
-            siguiente_archivo = archivos[index + 1]
-        except:
-            siguiente_archivo = None
-        # Enlaces con contenido
-
-        if enlace:
-            driver.get(enlace)
-            marco = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.ID, "content"))
-            )
-            links = marco.find_elements(By.TAG_NAME, "a")
-            links = extraer_links_descarga(links)
-
-            if len(stack) == 0:
-                ruta_actual = raiz + "\\" + nombre_archivo
-                stack.append(ruta_actual)
-                if enlace:
-                    if links:  # idk
+                if len(stack) == 0:
+                    ruta_actual = raiz + "\\" + nombre_archivo
+                    stack.append(ruta_actual)
+                    if enlace:
+                        if links:  # idk
+                            if len(links) > 1:
+                                crear_dir(ruta_actual)
+                                for link in links:
+                                    descargar_archivo(link, ruta_actual, cookies, archivos_no_descargados)
+                            else:
+                                descargar_archivo(links.pop(), raiz, cookies, archivos_no_descargados)
+                else:
+                    ruta_actual = stack[-1] + "\\" + nombre_archivo
+                    stack.append(ruta_actual)
+                    if enlace:
                         if len(links) > 1:
                             crear_dir(ruta_actual)
                             for link in links:
                                 # descargar_archivo_con_selenium(link, ruta_actual,driver)
                                 descargar_archivo(link, ruta_actual, cookies, archivos_no_descargados)
                         else:
-                            # descargar_archivo_con_selenium(links.pop(), raiz,driver)
-                            descargar_archivo(links.pop(), raiz, cookies, archivos_no_descargados)
-            else:
-                ruta_actual = stack[-1] + "\\" + nombre_archivo
-                stack.append(ruta_actual)
-                if enlace:
-                    if len(links) > 1:
+                            if len(links) > 0:
+                                # descargar_archivo_con_selenium(links.pop(), stack[-2],driver)
+                                descargar_archivo(links.pop(), stack[-2], cookies, archivos_no_descargados)
+                if siguiente_archivo:
+                    if siguiente_archivo["nivel"] > nivel:
                         crear_dir(ruta_actual)
-                        for link in links:
-                            # descargar_archivo_con_selenium(link, ruta_actual,driver)
-                            descargar_archivo(link, ruta_actual, cookies, archivos_no_descargados)
+
+                    # Verificar si estan en el mismo lugar:
+                    if siguiente_archivo["nivel"] == nivel:
+                        print(f"siguiente archivo en el mismo nivel")
+                        stack.pop()
+
+                    # Verificar si el siguiente no es hijo del anterior
+                    if siguiente_archivo["nivel"] < nivel:
+                        dif = int(nivel) - int(siguiente_archivo["nivel"])
+                        pop_n(stack, dif + 1)
+            else:
+                print(f"{nombre_archivo} es un separador.")
+
+                if siguiente_archivo:
+                    if siguiente_archivo["link"]:
+                        print(f"El siguiente archivo: {siguiente_archivo['nombre']} contiene links.")
+                        if len(stack) == 0:
+                            ruta_actual = raiz + "\\" + nombre_archivo
+                            stack.append(ruta_actual)
+                        else:
+                            ruta_actual = stack[-1] + "\\" + nombre_archivo
+                            stack.append(ruta_actual)
+                        crear_dir(ruta_actual)
                     else:
-                        if len(links) > 0:
-                            # descargar_archivo_con_selenium(links.pop(), stack[-2],driver)
-                            descargar_archivo(links.pop(), stack[-2], cookies, archivos_no_descargados)
-            if siguiente_archivo:
-                if siguiente_archivo["nivel"] > nivel:
-                    crear_dir(ruta_actual)
+                        print(f"El siguiente archivo: {siguiente_archivo['nombre']} es un separador.")
+    if len(archivos_no_descargados) > 0:
+        print("\n" + "=" * 50)
+        print("!!! ADVERTENCIA: HAY ARCHIVOS NO DESCARGADOS !!!")
+        for i in archivos_no_descargados:
+            print(i)
+        print("=" * 50 + "\n")
 
-                # Verificar si estan en el mismo lugar:
-                if siguiente_archivo["nivel"] == nivel:
-                    print(f"siguiente archivo en el mismo nivel")
-                    stack.pop()
 
-                # Verificar si el siguiente no es hijo del anterior
-                if siguiente_archivo["nivel"] < nivel:
-                    dif = int(nivel) - int(siguiente_archivo["nivel"])
-                    pop_n(stack, dif + 1)
-        else:
-            print(f"{nombre_archivo} es un separador.")
-
-            if siguiente_archivo:
-                if siguiente_archivo["link"]:
-                    print(f"El siguiente archivo: {siguiente_archivo['nombre']} contiene links.")
-                    if len(stack) == 0:
-                        ruta_actual = raiz + "\\" + nombre_archivo
-                        stack.append(ruta_actual)
-                    else:
-                        ruta_actual = stack[-1] + "\\" + nombre_archivo
-                        stack.append(ruta_actual)
-                    crear_dir(ruta_actual)
-                else:
-                    print(f"El siguiente archivo: {siguiente_archivo['nombre']} es un separador.")
-
-if len(archivos_no_descargados) > 0:
-    print("\n" + "=" * 50)
-    print("!!! ADVERTENCIA: HAY ARCHIVOS NO DESCARGADOS !!!")
-    for i in archivos_no_descargados:
-        print(i)
-    print("=" * 50 + "\n")
+# Entra a un modulos de una página
+if len(cursos) > 1:
+    for curso in cursos:
+        main_function(curso)
+else:
+    main_function(cursos)

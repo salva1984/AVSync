@@ -2,9 +2,6 @@ import os
 import time
 import requests
 
-
-
-
 def obtener_nombre_archivo(url, cookies=None):
     session = requests.Session()
     headers = {"User-Agent": "Mozilla/5.0"}  # Simula un navegador
