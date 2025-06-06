@@ -184,32 +184,33 @@ def main_function(curso):
                 links = marco.find_elements(By.TAG_NAME, "a")
                 links = extraer_links_descarga(links)
 
+                # Si no hay elementos en el stack (carpeta raiz)
                 if len(stack) == 0:
                     ruta_actual = raiz + "\\" + nombre_archivo
                     stack.append(ruta_actual)
+
                     if enlace:
                         if links:  # idk
-                            if len(links) > 1:
-                                crear_dir(ruta_actual)
-                                for link in links:
+                            if len(links) > 1: # Si hay mas de un enlace (documento) en la pagina...
+                                crear_dir(ruta_actual) # Crea una carpeta
+                                for link in links: # Y descarga los archivos adentro
                                     descargar_archivo(link, ruta_actual, cookies, archivos_no_descargados)
-                            else:
+                            else: # Si solo tiene un archivo
                                 descargar_archivo(links.pop(), raiz, cookies, archivos_no_descargados)
-                else:
-                    ruta_actual = stack[-1] + "\\" + nombre_archivo
-                    stack.append(ruta_actual)
+                else: # Si estas debajo de alguna carpeta
+                    ruta_actual = stack[-1] + "\\" + nombre_archivo # Recupera la ruta de la carpeta padre
+                    stack.append(ruta_actual) # Agrega esta ruta en caso de que pueda ser una carpeta que contenga mas carpetas
                     if enlace:
                         if len(links) > 1:
                             crear_dir(ruta_actual)
-                            for link in links:
-                                # descargar_archivo_con_selenium(link, ruta_actual,driver)
+                            for link in links: # Descarga los archivos en la carpeta creada
                                 descargar_archivo(link, ruta_actual, cookies, archivos_no_descargados)
                         else:
-                            if len(links) > 0:
-                                # descargar_archivo_con_selenium(links.pop(), stack[-2],driver)
+                            if len(links) > 0: # Si solo tiene un archivo
                                 descargar_archivo(links.pop(), stack[-2], cookies, archivos_no_descargados)
-                if siguiente_archivo:
-                    if siguiente_archivo["nivel"] > nivel:
+                                # stack[-2] es la ruta padre de este archivo, stack[-1] es este archivo
+                if siguiente_archivo: #Si el siguiente archivo NO es un separador
+                    if siguiente_archivo["nivel"] > nivel: # Si el siguiente "archivo" es un hijo de el actual
                         crear_dir(ruta_actual)
 
                     # Verificar si estan en el mismo lugar:
@@ -237,11 +238,15 @@ def main_function(curso):
                     else:
                         print(f"El siguiente archivo: {siguiente_archivo['nombre']} es un separador.")
     if len(archivos_no_descargados) > 0:
-        print("\n" + "=" * 50)
-        print("!!! ADVERTENCIA: HAY ARCHIVOS NO DESCARGADOS !!!")
-        for i in archivos_no_descargados:
-            print(i)
-        print("=" * 50 + "\n")
+        with open("archivos_no_descargados.txt", "w") as f:
+            f.write("=" * 50 + "\n")
+            f.write("!!! ADVERTENCIA: HAY ARCHIVOS NO DESCARGADOS !!!\n")
+            for i in archivos_no_descargados:
+                f.write(f"{i}\n")
+            f.write("=" * 50 + "\n")
+
+        print("\n[!] Algunos archivos no se pudieron descargar.")
+        print("[!] Revisa el archivo 'archivos_no_descargados.txt' para más detalles.\n")
 
 
 # Entra a un modulos de una página
