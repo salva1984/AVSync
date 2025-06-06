@@ -1,7 +1,7 @@
 import re
 import time
-import winreg
 import os
+import platform
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -13,11 +13,24 @@ from file_utils import leer_archivo
 from requests_util import descargar_archivo
 
 
+
+
 def get_desktop_path():
-    with winreg.OpenKey(winreg.HKEY_CURRENT_USER,
-                        r"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders") as key:
-        desktop = winreg.QueryValueEx(key, "Desktop")[0]
-    return desktop
+    system = platform.system()
+
+    if system == "Windows":
+        try:
+            import winreg
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+                                r"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders") as key:
+                desktop = winreg.QueryValueEx(key, "Desktop")[0]
+            return desktop
+        except Exception as e:
+            print(f"Error obteniendo el escritorio en Windows: {e}")
+            return os.path.join(os.path.expanduser("~"), "Desktop")
+
+    else:  # Linux, macOS, etc.
+        return os.path.join(os.path.expanduser("~"), "Desktop")
 
 
 def pop_n(stack, n):
@@ -53,13 +66,17 @@ def crear_dir(path):
 def crear_dir_force(path: str):
     if not os.path.exists(path):
         os.makedirs(path)
-        print("Creando dir a:" + path)
+        print(f"Creando dir en: {path}")
     else:
-        print(f'Conflicto de carpeta-archivo con el mismo nombre en {path}')
-        path = path.split('\\')
-        path[-1] = 'Carpeta-' + path[-1]
-        path = "\\".join(path)
-        os.makedirs(path)
+        print(f"Conflicto: ya existe un archivo o carpeta con el nombre '{path}'")
+        # Dividimos la ruta en su directorio padre y el nombre del último componente.
+        directorio_padre, nombre_actual = os.path.split(path)
+        nuevo_nombre = f"Carpeta-{nombre_actual}"
+        # Si directorio_padre está vacío (ruta relativa sin subcarpetas), os.path.join
+        # devolverá simplemente 'Carpeta-<nombre_actual>'.
+        nueva_ruta = os.path.join(directorio_padre, nuevo_nombre)
+        os.makedirs(nueva_ruta)
+        print(f"Creando dir en: {nueva_ruta}")
 
 
 def extraer_links(links):
@@ -107,8 +124,11 @@ cookies = obtener_cookies_sesion(driver,
 
 
 def main_function(curso):
+    time.sleep(1)
     driver.get(curso)
-    boton_expandir = driver.find_element(By.ID, 'expand_collapse_all')
+    boton_expandir = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.ID, 'expand_collapse_all'))
+    )
     if boton_expandir.get_attribute('aria-expanded') == 'true':
         boton_expandir.click()
         time.sleep(0.5)
@@ -122,8 +142,9 @@ def main_function(curso):
     l_divs = []
     for div in divs:
         # Obtenemos la ruta raiz
-        raiz = desktop_path + "\\" + limpiar_nombre_archivo(driver.title) + "\\" + limpiar_nombre_archivo(
-            div.get_attribute("aria-label"))
+        carpeta_titulo = limpiar_nombre_archivo(driver.title)
+        carpeta_div = limpiar_nombre_archivo(div.get_attribute("aria-label"))
+        raiz = os.path.join(desktop_path, carpeta_titulo, carpeta_div)
 
         # Get all the "content" of the div
         contenido = WebDriverWait(div, 10).until(
@@ -134,6 +155,7 @@ def main_function(curso):
         # Get relevant information about files
         l_archivos = []
         for archivo in archivos:
+            time.sleep(0.5)
             nombre_archivo = limpiar_nombre_archivo(archivo.text.split("\n")[1])
             nivel = calcular_nivel(archivo)
             try:
@@ -186,7 +208,7 @@ def main_function(curso):
 
                 # Si no hay elementos en el stack (carpeta raiz)
                 if len(stack) == 0:
-                    ruta_actual = raiz + "\\" + nombre_archivo
+                    ruta_actual = os.path.join(raiz, nombre_archivo)
                     stack.append(ruta_actual)
 
                     if enlace:
@@ -198,7 +220,7 @@ def main_function(curso):
                             else: # Si solo tiene un archivo
                                 descargar_archivo(links.pop(), raiz, cookies, archivos_no_descargados)
                 else: # Si estas debajo de alguna carpeta
-                    ruta_actual = stack[-1] + "\\" + nombre_archivo # Recupera la ruta de la carpeta padre
+                    ruta_actual = os.path.join(stack[-1], nombre_archivo) # Recupera la ruta de la carpeta padre
                     stack.append(ruta_actual) # Agrega esta ruta en caso de que pueda ser una carpeta que contenga mas carpetas
                     if enlace:
                         if len(links) > 1:
@@ -229,10 +251,10 @@ def main_function(curso):
                     if siguiente_archivo["link"]:
                         print(f"El siguiente archivo: {siguiente_archivo['nombre']} contiene links.")
                         if len(stack) == 0:
-                            ruta_actual = raiz + "\\" + nombre_archivo
+                            ruta_actual = os.path.join(raiz, nombre_archivo)
                             stack.append(ruta_actual)
                         else:
-                            ruta_actual = stack[-1] + "\\" + nombre_archivo
+                            ruta_actual = os.path.join(stack[-1], nombre_archivo)
                             stack.append(ruta_actual)
                         crear_dir(ruta_actual)
                     else:
@@ -254,4 +276,4 @@ if len(cursos) > 1:
     for curso in cursos:
         main_function(curso)
 else:
-    main_function(cursos)
+    main_function(cursos[0])
