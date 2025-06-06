@@ -3,7 +3,7 @@ Herramienta para descargar todos los archivos (pdfs, docx, pptx, etc) de un curs
 
 -------
 
-Crea un archivo llamado `datos.txt` con el siguiente formato:
+Crea un archivo llamado `datos.txt` dentro de src con el siguiente formato:
 
 ### Formato para datos.txt:
 
