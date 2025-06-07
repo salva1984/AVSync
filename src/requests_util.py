@@ -26,7 +26,7 @@ def obtener_nombre_archivo(url, cookies=None):
     return url.split("/")[-1]  # Última parte de la URL como nombre alternativo
 
 def descargar_archivo(url_descarga, carpeta_destino, cookies, archivos_no_descargados, intentos_max=3):
-    from main import limpiar_nombre_archivo
+    from src.file_utils import limpiar_nombre_archivo
     session = requests.Session()
 
     # Agregar cookies a la sesión de requests
@@ -78,3 +78,13 @@ def descargar_archivo(url_descarga, carpeta_destino, cookies, archivos_no_descar
     print(f"No se pudo descargar el archivo después de {intentos_max} intentos: {url_descarga}")
     archivos_no_descargados.append(url_descarga)
     return None
+
+
+def calcular_nivel(file):
+    nivel = file.get_attribute("class").split(" ")
+    for n in nivel:
+        if "indent" in n:
+            nivel = n
+            break
+    nivel = nivel.split("_")[1][0]
+    return nivel

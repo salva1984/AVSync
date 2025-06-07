@@ -5,22 +5,31 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
-from src.main import driver, limpiar_nombre_archivo, desktop_path, calcular_nivel, crear_dir, extraer_links_descarga, \
-    cookies, pop_n
-from src.requests_util import descargar_archivo
+from src.file_utils import crear_dir, get_desktop_path
+from src.file_utils import limpiar_nombre_archivo
+from src.requests_util import descargar_archivo, calcular_nivel
+from src.selenium_utils import extraer_links_descarga
+from src.utils import pop_n, get_config
 
 
-def main_function(curso):
+def main_function(curso,driver,cookies):
+    config = get_config()
+    desktop_path = get_desktop_path()
+    driver.command_executor.set_timeout(30)  # 30s para cualquier comunicación
+    driver.set_page_load_timeout(20)
+
     time.sleep(1)
     driver.get(curso)
     boton_expandir = WebDriverWait(driver, 10).until(
         EC.presence_of_element_located((By.ID, 'expand_collapse_all'))
     )
     if boton_expandir.get_attribute('aria-expanded') == 'true':
+        time.sleep(0.5)
         boton_expandir.click()
         time.sleep(0.5)
         boton_expandir.click()
     else:
+        time.sleep(0.5)
         boton_expandir.click()
     # Obtener todos los links de modulos
     marco = driver.find_element(By.ID, "context_modules")
@@ -100,26 +109,27 @@ def main_function(curso):
 
                     if enlace:
                         if links:  # idk
-                            if len(links) > 1: # Si hay mas de un enlace (documento) en la pagina...
-                                crear_dir(ruta_actual) # Crea una carpeta
-                                for link in links: # Y descarga los archivos adentro
+                            if len(links) > 1:  # Si hay mas de un enlace (documento) en la pagina...
+                                crear_dir(ruta_actual)  # Crea una carpeta
+                                for link in links:  # Y descarga los archivos adentro
                                     descargar_archivo(link, ruta_actual, cookies, archivos_no_descargados)
-                            else: # Si solo tiene un archivo
+                            else:  # Si solo tiene un archivo
                                 descargar_archivo(links.pop(), raiz, cookies, archivos_no_descargados)
-                else: # Si estas debajo de alguna carpeta
-                    ruta_actual = os.path.join(stack[-1], nombre_archivo) # Recupera la ruta de la carpeta padre
-                    stack.append(ruta_actual) # Agrega esta ruta en caso de que pueda ser una carpeta que contenga mas carpetas
+                else:  # Si estas debajo de alguna carpeta
+                    ruta_actual = os.path.join(stack[-1], nombre_archivo)  # Recupera la ruta de la carpeta padre
+                    stack.append(
+                        ruta_actual)  # Agrega esta ruta en caso de que pueda ser una carpeta que contenga mas carpetas
                     if enlace:
                         if len(links) > 1:
                             crear_dir(ruta_actual)
-                            for link in links: # Descarga los archivos en la carpeta creada
+                            for link in links:  # Descarga los archivos en la carpeta creada
                                 descargar_archivo(link, ruta_actual, cookies, archivos_no_descargados)
                         else:
-                            if len(links) > 0: # Si solo tiene un archivo
+                            if len(links) > 0:  # Si solo tiene un archivo
                                 descargar_archivo(links.pop(), stack[-2], cookies, archivos_no_descargados)
                                 # stack[-2] es la ruta padre de este archivo, stack[-1] es este archivo
-                if siguiente_archivo: #Si el siguiente archivo NO es un separador
-                    if siguiente_archivo["nivel"] > nivel: # Si el siguiente "archivo" es un hijo de el actual
+                if siguiente_archivo:  # Si el siguiente archivo NO es un separador
+                    if siguiente_archivo["nivel"] > nivel:  # Si el siguiente "archivo" es un hijo de el actual
                         crear_dir(ruta_actual)
 
                     # Verificar si estan en el mismo lugar:
