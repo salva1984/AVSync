@@ -15,6 +15,7 @@ export async function login() {
     const page = await browser.newPage();
 
     await page.goto('https://aulavirtual.espol.edu.ec/login/openid_connect');
+    await page.waitForURL('https://sts.espol.edu.ec/adfs/ls/**');
 
     await page.getByPlaceholder('usuario@espol.edu.ec').fill(process.env.EMAIL);
     await page.getByPlaceholder('Password').fill(process.env.PASSWORD);
