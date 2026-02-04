@@ -1,0 +1,26 @@
+{
+  "name": "avsync",
+  "version": "1.0.0",
+  "description": "<p align=\"center\">   <img src=\"https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white\" />   <img src=\"https://img.shields.io/badge/Selenium-43B02A?style=for-the-badge&logo=selenium&logoColor=white\" />   <img src=\"https://img.shields.io/badge/Canvas_LMS-E34F26?style=for-the-badge&logo=canvas&logoColor=white\" /> </p>",
+  "homepage": "https://github.com/salva1984/AVSync#readme",
+  "bugs": {
+    "url": "https://github.com/salva1984/AVSync/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/salva1984/AVSync.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {},
+  "devDependencies": {
+    "@playwright/test": "^1.58.1",
+    "@types/node": "^25.2.0"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "terminal-image": "^4.2.0"
+  }
+}

@@ -22,8 +22,7 @@ def crear_dir(path):
         os.makedirs(path)
         print("Creando dir a:" + path)
 
-
-def get_desktop_path():
+def get_desktop_path(): 
     system = platform.system()
 
     if system == "Windows":
@@ -32,7 +31,7 @@ def get_desktop_path():
             with winreg.OpenKey(winreg.HKEY_CURRENT_USER,
                                 r"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders") as key:
                 desktop = winreg.QueryValueEx(key, "Desktop")[0]
-            return desktop
+            return desktop 
         except Exception as e:
             print(f"Error obteniendo el escritorio en Windows: {e}")
             return os.path.join(os.path.expanduser("~"), "Desktop")

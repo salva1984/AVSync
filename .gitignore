@@ -171,3 +171,11 @@ cython_debug/
 .pypirc
 /datos.txt
 /.idea
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

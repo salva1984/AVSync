@@ -24,10 +24,12 @@ def main_function(curso,driver,cookies):
     )
     if boton_expandir.get_attribute('aria-expanded') == 'true':
         time.sleep(0.5)
+        time.sleep(0.5)
         boton_expandir.click()
         time.sleep(0.5)
         boton_expandir.click()
     else:
+        time.sleep(0.5)
         time.sleep(0.5)
         boton_expandir.click()
     # Obtener todos los links de modulos
