@@ -11,28 +11,40 @@ export async function login() {
 
     let numeroAutenthicator;
 
-    const browser = await chromium.launch({ headless: false });
+    const browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
 
     await page.goto('https://aulavirtual.espol.edu.ec/login/openid_connect');
-    await page.waitForURL('https://sts.espol.edu.ec/adfs/ls/**');
+    try {
+        await page.waitForURL('https://sts.espol.edu.ec/adfs/ls/**');
 
-    await page.getByPlaceholder('usuario@espol.edu.ec').fill(process.env.EMAIL);
-    await page.getByPlaceholder('Password').fill(process.env.PASSWORD);
-    await page.getByRole('button', { name: 'Sign in' }).click();
+        await page.getByPlaceholder('usuario@espol.edu.ec').fill(process.env.EMAIL);
 
-    await page.waitForURL('https://login.microsoftonline.com/login.srf');
-    await page.getByRole('button', { name: 'Continue' }).click();
+        //password cambia dependiendo de el idioma
+        await page.locator('#passwordInput').fill(process.env.PASSWORD);
+        await page.locator('#submitButton').click();
 
-    await page.waitForURL('https://login.microsoftonline.com/appverify');
-    // esperamos esa animacion
-    await page.waitForTimeout(2000);
-    const buffer = await page.locator('.display-sign-container').screenshot();
-    // muestra el numero de auth en consola
-    console.log(await terminalImage.buffer(buffer));
+        await page.waitForURL('https://login.microsoftonline.com/login.srf');
+        
+        // confiar en espol.edu.ec
+        await page.locator('#idSIButton9').click();
 
-    await page.getByRole('input', { value: 'Yes' }).click();
-    console.log(page.url());
+        await page.waitForURL('https://login.microsoftonline.com/appverify');
+        // esperamos esa animacion
+        await page.waitForTimeout(2000);
+        const buffer = await page.locator('.display-sign-container').screenshot();
+        // muestra el numero de auth en consola
+        console.log(await terminalImage.buffer(buffer));
+
+        await page.getByRole('input', { value: 'Yes' }).click();
+        console.log(page.url());
+
+    } catch (error) {
+        const buffer = await page.screenshot({ path: 'error.png', fullPage: true });
+        console.log(await terminalImage.buffer(buffer));
+        throw error;
+    }
+
 
 
 
