@@ -14,7 +14,9 @@
   "author": "",
   "type": "module",
   "main": "src/index.js",
-  "scripts": {},
+  "scripts": {
+    "main": "node src/index.js"
+  },  
   "devDependencies": {
     "@playwright/test": "^1.58.1",
     "@types/node": "^25.2.0"

@@ -180,4 +180,6 @@ node_modules/
 /playwright/.cache/
 /playwright/.auth/
 
+# importante para no leekear datos
 error.png
+cookies.json
